@@ -1,0 +1,51 @@
+#include "apue.h"
+#include <fcntl.h>
+
+
+/**
+死锁：两个进程互相等待对方持有并且不释放锁定的资源
+3.锁的隐含继承和释放
+(1)锁与进程和文件相关联(进程终止，建立的锁全部释放;进程描述符关闭时，引用文件上任何一把锁释放)
+(2)fork()产生的进程不继承父进程设置的锁
+(3)exec后新程序可以继承原执行程序的锁
+*/
+static void
+lockabyte(const char *name, int fd, off_t offset)
+{
+	if (writew_lock(fd, offset, SEEK_SET, 1) < 0)
+		err_sys("%s: writew_lock error", name);
+	printf("%s: got the lock, byte %ld\n", name, offset);
+}
+
+int
+main(void)
+{
+	int		fd;
+	pid_t	pid;
+
+	/*
+	 * Create a file and write two bytes to it.
+	 */
+	if ((fd = creat("templock", FILE_MODE)) < 0)
+		err_sys("creat error");
+	if (write(fd, "ab", 2) != 2)
+		err_sys("write error");
+
+	TELL_WAIT();
+	if ((pid = fork()) < 0) {
+		err_sys("fork error");
+	} else if (pid == 0) {			/* child */
+	    //子进程对0字节加锁 
+		lockabyte("child", fd, 0);
+		TELL_PARENT(getppid());//对父进程锁住的进程加锁
+		WAIT_PARENT();
+		lockabyte("child", fd, 1);
+	} else {						/* parent */
+	    //父进程随1字节加锁
+		lockabyte("parent", fd, 1);
+		TELL_CHILD(pid);//对子进程锁住的字节加锁 
+		WAIT_CHILD();
+		lockabyte("parent", fd, 0);
+	}
+	exit(0);
+}

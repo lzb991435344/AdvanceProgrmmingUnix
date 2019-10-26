@@ -1,0 +1,72 @@
+#include <stdlib.h>
+#include <pthread.h>
+/**  线程同步用锁，互斥用互斥量
+   使用互斥量保护数据结构，当一个以上的线程需要访问动态分配的对象
+ 时，可以在对象中嵌入引用计数，确保该对象的线程完成数据访问之前，
+ 内存空间不会被释放。
+   mutex实际上是一把锁，在访问共享资源之前加锁，访问完成之后释放，
+其他阻塞的线程只能等待当前线程释放互斥锁，可运行的线程继续加锁。这样
+保证每次只有一个线程进行访问。
+
+api函数：
+//pthread_mutex_t互斥量表示
+//使用默认的属性初始化互斥量，将attr设置为NULL
+ int pthread_mutex_init(pthread_mutex_t* restrict mutex , const
+  pthread_mutexattr_t* restrict attr);
+
+ int pthread_mutex_destroy(pthread_mutex_t* mutex);
+ 两个函数返回值：成功返回0，否则返回错误编码
+
+
+ 对互斥量加锁：
+ int pthread_mutex_lock(pthread_mutex_t* mutex);
+ int pthread_mutex_trylock(pthread_mutex_t* mutex);
+ int pthread_mutex_unlock(pthread_mutex_t* mutex);
+ 所有函数返回值：成功返回0，否则返回错误编码
+*/
+
+
+struct foo {
+	int             f_count;
+	//定义一个互斥变量
+	pthread_mutex_t f_lock;
+	/* ... more stuff here ... */
+};
+
+struct foo * foo_alloc(void) /* allocate the object */
+{
+	struct foo *fp;
+	//分配结构体的空间
+	if ((fp = malloc(sizeof(struct foo))) != NULL) {
+		fp->f_count = 1;//设置初始
+
+		//初始化不成功
+		if (pthread_mutex_init(&fp->f_lock, NULL) != 0) {
+			free(fp);
+			return(NULL);
+		}
+		/* ... continue initialization ... */
+	}
+	return(fp);
+}
+
+//线程调用foo_hold对这个对象的引用计数加1
+void foo_hold(struct foo *fp) /* add a reference to the object */
+{
+	pthread_mutex_lock(&fp->f_lock);
+	fp->f_count++;
+	pthread_mutex_unlock(&fp->f_lock);
+}
+
+//调用foo_rele释放引用，最后一个引用被释放之后，对象内存空间被释放
+void foo_rele(struct foo *fp) /* release a reference to the object */
+{
+	pthread_mutex_lock(&fp->f_lock);
+	if (--fp->f_count == 0) { /* last reference */
+		pthread_mutex_unlock(&fp->f_lock);
+		pthread_mutex_destroy(&fp->f_lock);
+		free(fp);
+	} else {
+		pthread_mutex_unlock(&fp->f_lock);
+	}
+}

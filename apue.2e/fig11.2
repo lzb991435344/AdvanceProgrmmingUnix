@@ -1,0 +1,52 @@
+#include "apue.h"
+#include <pthread.h>
+
+pthread_t ntid;
+
+/**
+  打印进程ID,x新线程的线程ID,初始线程的线程ID
+*/
+
+void
+printids(const char *s)
+{
+	pid_t		pid;
+	pthread_t	tid;//新建的线程ID
+
+	pid = getpid();//获取进程ID
+	tid = pthread_self();//获取自己的线程Id
+	//无符号整型表示进程ID
+	printf("%s pid %u tid %u (0x%x)\n", s, (unsigned int)pid,
+	  (unsigned int)tid, (unsigned int)tid);
+}
+
+void *
+thr_fn(void *arg)
+{
+	printids("new thread: ");
+	return((void *)0);
+}
+
+int main(void)
+{
+	int		err;
+    /**
+	#include <pthread.h>
+	int pthread_create(pthread_t* restrict tidp, const pthread_t* 
+	 restrict attr, void*(*start_rtn)(void*), void* restrict arg);
+	
+	
+	返回值：成功返回0， 不成功返回错误编码。
+	解析：新建的线程从start_rtn开始运行，针参数arg
+	多个参数向start_rtn传递，可以把参数放进结构体中
+	
+	创建的线程不能保证那个先运行，新建的线程可以访问进程的地址空间
+	并且继承调用线程的复浮点环境和信号屏蔽字，该线程的挂起信号被清除
+	*/
+	err = pthread_create(&ntid, NULL, thr_fn, NULL);
+	if (err != 0)
+		err_quit("can't create thread: %s\n", strerror(err));
+	printids("main thread:");
+	sleep(1);
+	exit(0);
+}

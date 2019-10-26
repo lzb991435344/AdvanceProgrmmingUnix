@@ -1,0 +1,13 @@
+#include <pthread.h>
+#include <time.h>
+
+/**
+函数pthread_mutex_timelock
+互斥量原语允许绑定线程阻塞时间，超时不加锁而是返回错误码
+
+int pthread_mutex_timelock(pthread_mutex_t* restrict mutex,
+const struct timespec* restrict tsptr);
+  返回值：成功返回0，失败返回错误编码
+
+
+*/

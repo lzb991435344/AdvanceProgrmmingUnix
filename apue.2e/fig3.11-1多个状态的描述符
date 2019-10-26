@@ -1,0 +1,28 @@
+#include "apue.h"
+#include <fcntl.h>
+
+/**
+对一个文件描述符开启一个或多个文件状态标志
+1.ioctl I/O操作杂物箱，多用于终端I/O
+
+int ioctl(int fd,int request,...)
+成功返回其他值，出错-1
+*/
+void
+set_fl(int fd, int flags) /* flags are file status flags to turn on */
+{
+	int		val;
+
+	if ((val = fcntl(fd, F_GETFL, 0)) < 0)
+		err_sys("fcntl F_GETFL error");
+
+	val |= flags;		/* turn on flags */
+
+	if (fcntl(fd, F_SETFL, val) < 0)
+		err_sys("fcntl F_SETFL error");
+}
+
+//set_fl(STDOUT_FILENO,O_SYNC)
+//通常write只是将数据排入队列，写磁盘在某个时刻进行
+//加上该句后，write要等到数据确认写回磁盘再返回，数据库
+//系统常使用O_SYNC，避免数据丢失，但是会增加系统和时钟时间

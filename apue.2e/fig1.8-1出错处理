@@ -1,0 +1,23 @@
+#include "apue.h"
+#include <errno.h>
+
+/**
+1.7 出错处理
+系统通常会返回一个负值，errno返回具有特定消息的值，以E开头，
+如EACCES是权限问题
+  (1)streeor
+  函数原型  char* strerror(int errnum)
+  将errnum(errno)的值映射为一个出错消息字符串，返回指向改字符串的指针
+  (2)perror
+  void perror(const char* msg)
+  基于errno的当前值，在标准错误上一条消息，返回
+
+*/
+int main(int argc, char *argv[])
+{
+	fprintf(stderr, "EACCES: %s\n", strerror(EACCES));
+	errno = ENOENT;
+	//./a.out作为参数传递给perror
+	perror(argv[0]);
+	exit(0);
+}

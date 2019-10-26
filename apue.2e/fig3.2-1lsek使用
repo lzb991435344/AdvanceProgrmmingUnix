@@ -1,0 +1,37 @@
+#include "apue.h"
+#include <fcntl.h>
+
+char	buf1[] = "abcdefghij";
+char	buf2[] = "ABCDEFGHIJ";
+/**
+创建一个空洞文件
+lseek执行成功后，使用以下打开文件偏移量
+ off_t currpos;
+ currpos=lseek(fd,0,SEEK_CUR);
+ //符号常量SEEK_SET,SEEK_CUR,SEEK_END分别为0(绝对偏移量)，
+ //1(相对于当前位置的偏移量),2(相对于文件尾端的偏移量)
+ //若文件描述符指向的是管道，FIFO，或者是网络套接字，lseek返回
+ //-1，并且errno设置为ESPIPE
+*/
+
+int main(void)
+{
+	int		fd;
+
+	if ((fd = creat("file.hole", FILE_MODE)) < 0)
+		err_sys("creat error");
+
+	if (write(fd, buf1, 10) != 10)
+		err_sys("buf1 write error");
+	/* offset now = 10 */
+	//lseek使用的偏移量是off_t的，32位或者64位为接口处理偏移量
+	if (lseek(fd, 16384, SEEK_SET) == -1)
+		err_sys("lseek error");
+	/* offset now = 16384 */
+     
+	if (write(fd, buf2, 10) != 10)
+		err_sys("buf2 write error");
+	/* offset now = 16394 */
+
+	exit(0);
+}

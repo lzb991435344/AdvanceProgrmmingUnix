@@ -1,0 +1,30 @@
+#include "apue.h"
+#include <fcntl.h>
+
+/**
+记录锁(两个人同时编辑一个文件，取决于最后一个进程，数据库要保证单独写一个文件)
+1.fcntl锁
+#include<fcntl.h>
+int fcntl(int fd,int cmd,...) /*struct flock* flockptr;*/
+记录锁：cmd类型是
+F_GETLK:由flockptr描述的锁是否会被另外一把锁排斥
+F_SETLK:设置由flockptr描述的锁
+F_SETLKW:锁区域冲突，调用进程休眠，请求创建的锁可用，进程被唤醒
+
+注：任意多进程在一个给定的字节上可以有一把共享的读锁，
+在一个给定的字节上只能有一个进程有一把独占写锁
+
+
+*/
+
+//加锁或者解锁一个文件区域的函数
+int lock_reg(int fd, int cmd, int type, off_t offset, int whence, off_t len)
+{
+	struct flock	lock;
+	lock.l_type = type;		/* F_RDLCK(共享读锁), F_WRLCK(独占写锁), F_UNLCK */
+	lock.l_start = offset;	/* byte offset, relative to l_whence */
+	lock.l_whence = whence;	/* SEEK_SET, SEEK_CUR, SEEK_END */
+	lock.l_len = len;		/* #bytes (0 means to EOF) */
+   //pid_t l_pid;          /*return with F_GETLK*/
+	return(fcntl(fd, cmd, &lock));
+}

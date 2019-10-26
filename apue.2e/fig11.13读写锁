@@ -1,0 +1,122 @@
+#include <stdlib.h>
+#include <pthread.h>
+/**
+一次只有一个线程可以占有写锁，多个线程可以同时占有读锁
+ 读写锁：reader-writer lock，共享互斥锁，读时共享，写时互斥
+ (1)读锁：解锁前，所有试图加锁的线程都能得到访问权
+ (2)写锁：解锁前，所有试图加锁的线程都会被阻塞，
+ (3)不加锁：
+
+ 读写平衡策略：
+  读写锁处于读模式锁住时，，有线程以写模式获取锁时，读写锁
+  会阻塞随后的读模式锁请求，可避免读锁长期占用，写锁得不到满足
+
+*/
+
+
+struct job {
+	struct job *j_next;
+	struct job *j_prev;
+	pthread_t   j_id;   /* tells which thread handles this job */
+	/* ... more stuff here ... */
+};
+
+struct queue {
+	struct job      *q_head;
+	struct job      *q_tail;
+	pthread_rwlock_t q_lock;
+};
+
+/*
+ * Initialize a queue.
+ */
+int
+queue_init(struct queue *qp)
+{
+	int err;
+
+	qp->q_head = NULL;
+	qp->q_tail = NULL;
+	err = pthread_rwlock_init(&qp->q_lock, NULL);
+	if (err != 0)
+		return(err);
+
+	/* ... continue initialization ... */
+
+	return(0);
+}
+
+/*
+ * Insert a job at the head of the queue.
+ */
+void
+job_insert(struct queue *qp, struct job *jp)
+{
+	pthread_rwlock_wrlock(&qp->q_lock);
+	jp->j_next = qp->q_head;
+	jp->j_prev = NULL;
+	if (qp->q_head != NULL)
+		qp->q_head->j_prev = jp;
+	else
+		qp->q_tail = jp;	/* list was empty */
+	qp->q_head = jp;
+	pthread_rwlock_unlock(&qp->q_lock);
+}
+
+/*
+ * Append a job on the tail of the queue.
+ */
+void
+job_append(struct queue *qp, struct job *jp)
+{
+	pthread_rwlock_wrlock(&qp->q_lock);
+	jp->j_next = NULL;
+	jp->j_prev = qp->q_tail;
+	if (qp->q_tail != NULL)
+		qp->q_tail->j_next = jp;
+	else
+		qp->q_head = jp;	/* list was empty */
+	qp->q_tail = jp;
+	pthread_rwlock_unlock(&qp->q_lock);
+}
+
+/*
+ * Remove the given job from a queue.
+ */
+void
+job_remove(struct queue *qp, struct job *jp)
+{
+	pthread_rwlock_wrlock(&qp->q_lock);
+	if (jp == qp->q_head) {
+		qp->q_head = jp->j_next;
+		if (qp->q_tail == jp)
+			qp->q_tail = NULL;
+	} else if (jp == qp->q_tail) {
+		qp->q_tail = jp->j_prev;
+		if (qp->q_head == jp)
+			qp->q_head = NULL;
+	} else {
+		jp->j_prev->j_next = jp->j_next;
+		jp->j_next->j_prev = jp->j_prev;
+	}
+	pthread_rwlock_unlock(&qp->q_lock);
+}
+
+/*
+ * Find a job for the given thread ID.
+ */
+struct job *
+job_find(struct queue *qp, pthread_t id)
+{
+	struct job *jp;
+
+	if (pthread_rwlock_rdlock(&qp->q_lock) != 0)
+		return(NULL);
+
+	for (jp = qp->q_head; jp != NULL; jp = jp->j_next)
+		if (pthread_equal(jp->j_id, id))
+			break;
+
+	pthread_rwlock_unlock(&qp->q_lock);
+	return(jp);
+}

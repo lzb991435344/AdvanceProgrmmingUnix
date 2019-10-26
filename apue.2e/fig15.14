@@ -1,0 +1,27 @@
+#include "apue.h"
+#include <ctype.h>
+
+/**
+ 这里实现一个过滤程序。
+ 将标准输入复制到标准输出，复制时将大写字符变换成小写字符
+ 写完换行符后，fflush刷新标准输出(协同程序)
+
+*/
+int
+main(void)
+{
+	int		c;
+
+	while ((c = getchar()) != EOF) {
+	    //转换成小写
+		if (isupper(c))
+			c = tolower(c);
+        //结束符
+		if (putchar(c) == EOF)
+			err_sys("output error");
+			//写到换行符后刷新
+		if (c == '\n')
+			fflush(stdout);
+	}
+	exit(0);
+}

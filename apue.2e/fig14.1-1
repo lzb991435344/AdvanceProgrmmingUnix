@@ -1,0 +1,42 @@
+#include "apue.h"
+#include <errno.h>
+#include <fcntl.h>
+//长的非阻塞write
+char	buf[500000];
+
+/**
+使用open,read,write函数，且永远不阻塞
+非阻塞的i/o打开方法
+(1)调用open获得文件描述符，指定O_NONBLOCK标志
+(2)打开的文件描述符，调用fcntl，由该函数打开O_NONBLOCK文件状态
+
+*/
+int
+main(void)
+{   
+	int		ntowrite, nwrite;
+	char	*ptr;
+    
+	ntowrite = read(STDIN_FILENO, buf, sizeof(buf));
+	fprintf(stderr, "read %d bytes\n", ntowrite);
+    //设置非阻塞状态
+	set_fl(STDOUT_FILENO, O_NONBLOCK);	/* set nonblocking */
+
+	ptr = buf;
+	//循环把write的结果写到标准错误输出上
+	while (ntowrite > 0) {
+		errno = 0;
+		//写到标准输出
+		nwrite = write(STDOUT_FILENO, ptr, ntowrite);
+		fprintf(stderr, "nwrite = %d, errno = %d\n", nwrite, errno);
+
+		if (nwrite > 0) {
+			ptr += nwrite;
+			ntowrite -= nwrite;
+		}
+	}
+     //去除非阻塞状态
+	clr_fl(STDOUT_FILENO, O_NONBLOCK);	/* clear nonblocking */
+
+	exit(0);
+}

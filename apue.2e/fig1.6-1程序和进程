@@ -1,0 +1,14 @@
+#include "apue.h"
+
+/**
+1.6 程序和进程
+1.内核使用exec()函数将程序(存在目录中的可执行文件)读入内存，并执行程序
+2.进程执行的实例，进程Id是一个非负整数，标识进程
+*/
+
+int main(void)
+{
+   //调用getpid()获取进程id,返回pid_t数据类型，保存于长整型中（提高移植性）
+	printf("hello world from process ID %d\n", getpid());
+	exit(0);
+}

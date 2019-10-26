@@ -1,0 +1,30 @@
+#include "apue.h"
+
+#define	BUFFSIZE	4096
+
+/**
+输入和输出
+1.文件描述符
+ 非负整数，内核用来标示一个特定进程正在访问的文件
+内核打开现有文件或创建文件时都返回文件描述符，供读写用
+2.standard output,input,error，shell都为新程序打开三个文件描述符
+ls >file.list 重定向文件
+3.不带缓冲的i/o
+open,read,write,lseek,close都是不带缓冲的，使用文件描述符
+*/
+int main(void)
+{
+	int		n;
+	char	buf[BUFFSIZE];
+    //read返回要读取的字节数，0程序停止，出错返回-1
+	while ((n = read(STDIN_FILENO, buf, BUFFSIZE)) > 0)
+		if (write(STDOUT_FILENO, buf, n) != n)
+			err_sys("write error");
+
+	if (n < 0)
+		err_sys("read error");
+	exit(0);
+	
+	//./a.out>data --重定向到data
+	// ./a.out <infile> outfile --复制内容
+}

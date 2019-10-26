@@ -1,0 +1,33 @@
+#include "apue.h"
+
+//buffersize 的值选择
+//时钟时间与增大缓冲区的大小的时间差不多
+#define	BUFFSIZE	4096
+
+/**
+3.9 I/O效率
+ 用read和write复制一个文件
+ #include <unistd.h>
+ 1.read
+ssize_t read(int fd,void*buf,size_t nbytes)
+返回值：读到的字节数，文件末尾返回0，出错-1
+2.write
+ ssize_t write(int fd,const void* buf,size_t nbytes)
+ 成功返回已写的字节数，出错-1(磁盘已满或超出进程文件长度限制)
+*/
+//使用标准的输入和输出，进程结束内核会关闭文件描述符
+int main(void)
+{
+	int		n;
+	char	buf[BUFFSIZE];
+
+	while ((n = read(STDIN_FILENO, buf, BUFFSIZE)) > 0)
+	     //读出和写入的字节数相同
+		if (write(STDOUT_FILENO, buf, n) != n)
+			err_sys("write error");
+
+	if (n < 0)
+		err_sys("read error");
+
+	exit(0);
+}

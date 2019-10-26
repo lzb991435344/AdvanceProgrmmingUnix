@@ -1,0 +1,130 @@
+#include <stdlib.h>
+#include <pthread.h>
+
+/**
+  两个互斥量的使用
+
+*/
+
+#define NHASH 29
+//散列桶
+#define HASH(fp) (((unsigned long)fp)%NHASH)
+
+struct foo *fh[NHASH];
+
+pthread_mutex_t hashlock = PTHREAD_MUTEX_INITIALIZER;
+
+struct foo {
+	int             f_count;
+	pthread_mutex_t f_lock;
+	struct foo     *f_next; /* protected by hashlock */
+	int             f_id;
+	/* ... more stuff here ... */
+};
+
+struct foo *
+foo_alloc(void) /* allocate the object */
+{
+	struct foo	*fp;
+	int			idx;
+
+	if ((fp = malloc(sizeof(struct foo))) != NULL) {
+		fp->f_count = 1;
+		if (pthread_mutex_init(&fp->f_lock, NULL) != 0) {
+			free(fp);
+			return(NULL);
+		}
+		idx = HASH(fp);
+		pthread_mutex_lock(&hashlock);
+		fp->f_next = fh[idx];
+		fh[idx] = fp->f_next;
+		pthread_mutex_lock(&fp->f_lock);
+		pthread_mutex_unlock(&hashlock);
+		/* ... continue initialization ... */
+		pthread_mutex_unlock(&fp->f_lock);
+	}
+	return(fp);
+}
+
+void
+foo_hold(struct foo *fp) /* add a reference to the object */
+{
+   //锁住互斥量
+	pthread_mutex_lock(&fp->f_lock);
+	fp->f_count++;//引用计数增加
+	pthread_mutex_unlock(&fp->f_lock);
+}
+
+/**
+锁住散列的列表锁，搜索被请求的结构
+(1)找到增加引用计数和返回指向该结构体的指针
+(2)加锁顺序：
+  a.先在foo_find中锁定散列列表锁
+  b.在foo_hold中锁定foo结构中的f_lock互斥量
+
+*/
+struct foo * foo_find(int id) /* find an existing object */
+{
+	struct foo	*fp;
+	int			idx;
+
+	idx = HASH(fp);//在散列桶中取到索引
+	pthread_mutex_lock(&hashlock);//先锁住散列表
+	//搜索被请求的结构
+	for (fp = fh[idx]; fp != NULL; fp = fp->f_next) {
+		if (fp->f_id == id) {
+			foo_hold(fp);//锁定foo结构中的f_lock互斥量
+			break;
+		}
+	}
+	//解锁散列表
+	pthread_mutex_unlock(&hashlock);
+	return(fp);
+}
+
+/**
+(1)是最后一个引用，对互斥量进行解锁，从散列表中删除结构，获取
+散列列表锁，重新获取互斥量
+*/
+void foo_rele(struct foo *fp) /* release a reference to the object */
+{
+	struct foo	*tfp;
+	int			idx;
+
+	pthread_mutex_lock(&fp->f_lock);
+	//最后一个引用计数值
+	if (fp->f_count == 1) { /* last reference */
+		pthread_mutex_unlock(&fp->f_lock);//解锁互斥量
+		pthread_mutex_lock(&hashlock);
+		pthread_mutex_lock(&fp->f_lock);
+
+		//这里可能被阻塞着，重新检查条件
+		/* need to recheck the condition */
+		if (fp->f_count != 1) {
+			fp->f_count--;
+			pthread_mutex_unlock(&fp->f_lock);
+			pthread_mutex_unlock(&hashlock);
+			return;
+		}
+		/* remove from list */
+		idx = HASH(fp);//获取索引
+		tfp = fh[idx];
+		//直接是当前节点
+		if (tfp == fp) {
+			fh[idx] = fp->f_next;
+		} else {
+		//散列中寻找合适的位置
+			while (tfp->f_next != fp)
+				tfp = tfp->f_next;
+				//删除节点
+			tfp->f_next = fp->f_next;
+		}
+		pthread_mutex_unlock(&hashlock);
+		pthread_mutex_unlock(&fp->f_lock);
+		pthread_mutex_destroy(&fp->f_lock);
+		free(fp);
+	} else {//满足锁顺序而阻塞时发现这个结构并对其引用计数加1
+		fp->f_count--;//引用计数值减1
+		pthread_mutex_unlock(&fp->f_lock);//解锁所有的东西
+	}
+}

@@ -1,0 +1,47 @@
+#include "apue.h"
+#include <sys/wait.h>
+
+/**
+3.进程控制 
+(1)主要函数 exec()--7个变体,fork(),waitpid()
+(2)线程和线程Id
+a.各线程访问共享数据采取同步
+b.进程内的线程共享同一地址空间，文件描述符，栈及进程的相关属性
+
+
+*/
+int
+main(void)
+{
+	char	buf[MAXLINE];	/* from apue.h */
+	pid_t	pid;
+	int		status;
+
+	printf("%% ");	/* print prompt (printf requires %% to print %) */
+	//fgets返回的每一行都以换行符终止，后面随一个null字节
+	while (fgets(buf, MAXLINE, stdin) != NULL) {
+		if (buf[strlen(buf) - 1] == '\n')
+		 //用一个null字节替换换行符
+			buf[strlen(buf) - 1] = 0; /* replace newline with null */
+        //fork返回两次
+		//父进程：返回子进程id
+		//子进程：0
+		if ((pid = fork()) < 0) {
+			err_sys("fork error");
+		} else if (pid == 0) {		/* child */
+		    //参数要以null结束而不是换行符，buf中使用null字节替换
+			execlp(buf, buf, (char *)0);
+			//执行标准输入读入命令，用新的程序文件替换子进程原先执行的程序文件
+			//fork+exec组合函数构成spawn一个新进程
+			err_ret("couldn't execute: %s", buf);
+			exit(127);
+		}
+       //子程序调用execlp执行新程序文件，父进程调用waitpid等待子进程结束
+	   //参数：要等待的子进程，返回子进程的终止状态
+		/* parent */
+		if ((pid = waitpid(pid, &status, 0)) < 0)
+			err_sys("waitpid error");
+		printf("%% ");
+	}
+	exit(0);
+}

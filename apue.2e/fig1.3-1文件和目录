@@ -1,0 +1,31 @@
+#include "apue.h"
+#include <dirent.h>
+
+/**
+文件和目录
+1.dirent.h文件中包含对目录的基本操作函数 opendir,readdir,closedir
+2.argv[1]作为要列出其各个目录项的目录名
+3.进程使用chdir改变路径名
+4.相对路径：doc/memo/joe
+  绝对路径：/usr/lib/test
+*/
+int main(int argc, char *argv[])
+{
+	DIR				*dp;
+	struct dirent	*dirp;
+
+	if (argc != 2)
+		err_quit("usage: ls directory_name");
+     //opendir返回指向DIR的指针
+	if ((dp = opendir(argv[1])) == NULL)
+		err_sys("can't open %s", argv[1]);
+	//循环读取每个目录项，readdir返回值指向一个dirent的指针
+	//读取出每个目录项的名字
+	//可调用stat函数或文件所有属性
+	while ((dirp = readdir(dp)) != NULL)
+		printf("%s\n", dirp->d_name);
+     
+	closedir(dp);
+	//0表示正常结束，1~255表示出错
+	exit(0);
+}

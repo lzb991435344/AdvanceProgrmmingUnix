@@ -1,0 +1,70 @@
+#include "apue.h"
+#include <fcntl.h>
+/**
+1.原子操作(多进程同时写一个文件)
+ 由多步组成的一个操作，执行所有步骤或者不执行
+2.dup和dup2 复制一个现有的文件描述符
+#include<unistd.h>
+int dup(int fd)
+int dup2(int fd,int fd2)
+成功返回文件描述符(当前可用文件描述符中的最小数值)，出错-1
+(1)dup2中使用fd2参数指定新描述符的值，fd2若打开则先关闭，
+两者相等，返回fd2，进程在调用exec是fd2是打开的
+(2)新的文件描述符和fd共用一个文件表项
+3.sync,fsync和fdatasync(保证实际文件系统和缓冲区内容的一致性)
+(1)延迟写：磁盘I/o先把写入的数据放到缓冲区，接入队列，晚些写入磁盘
+  int fsync(int fd) --对指定的文件起作用，如数据库程序(确保修改过的块立即
+  写到磁盘上)，还同步更新文件的属性
+  int fdatasync(int fd) --只影响文件的数据部分
+  成功返回0，出错返回-1
+  void sync(void) --将所有修改过的块缓冲区排入写队列
+
+  4.fcntl函数--改变已经打开的文件属性
+  
+*/
+
+int main(int argc, char *argv[])
+{
+	int		val;
+
+	if (argc != 2)
+		err_quit("usage: a.out <descriptor#>");
+
+      //指定文件的描述符，打印选择的文件标志说明
+	if ((val = fcntl(atoi(argv[1]), F_GETFL, 0)) < 0)
+		err_sys("fcntl error for fd %d", atoi(argv[1]));
+
+	switch (val & O_ACCMODE) {
+	//只读
+	case O_RDONLY:
+		printf("read only");
+		break;
+    //只写
+	case O_WRONLY:
+		printf("write only");
+		break;
+    //读写
+	case O_RDWR:
+		printf("read write");
+		break;
+
+	default:
+		err_dump("unknown access mode");
+	}
+     
+	if (val & O_APPEND)
+		printf(", append");
+	if (val & O_NONBLOCK)
+		printf(", nonblocking");
+//打印没有定义的文件标志
+#if defined(O_SYNC)
+	if (val & O_SYNC)
+		printf(", synchronous writes");
+#endif
+#if !defined(_POSIX_C_SOURCE) && defined(O_FSYNC)
+	if (val & O_FSYNC)
+		printf(", synchronous writes");
+#endif
+	putchar('\n');
+	exit(0);
+}
