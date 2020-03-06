@@ -24,6 +24,7 @@ already_running(void)
 		exit(1);
 	}
 	if (lockfile(fd) < 0) {
+		//Operation is prohibited by locks held by other processes.
 		if (errno == EACCES || errno == EAGAIN) {
 			close(fd);
 			return(1);
@@ -31,6 +32,7 @@ already_running(void)
 		syslog(LOG_ERR, "can't lock %s: %s", LOCKFILE, strerror(errno));
 		exit(1);
 	}
+	//将文件截断到指定长度
 	ftruncate(fd, 0);
 	sprintf(buf, "%ld", (long)getpid());
 	write(fd, buf, strlen(buf)+1);

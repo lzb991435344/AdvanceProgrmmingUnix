@@ -70,12 +70,15 @@ main(int argc, char *argv[])
 	/*
 	 * Restore SIGHUP default and block all signals.
 	 */
-	sa.sa_handler = SIG_DFL;
-	sigemptyset(&sa.sa_mask);
+	sa.sa_handler = SIG_DFL; //设置为默认动作
+	sigemptyset(&sa.sa_mask);//初始化信号集
 	sa.sa_flags = 0;
 	if (sigaction(SIGHUP, &sa, NULL) < 0)
 		err_quit("%s: can't restore SIGHUP default");
+	//initializes set to full, including all signals.
 	sigfillset(&mask);
+	//提供屏蔽和解除屏蔽信号的功能。
+	//SIG_BLOCK，SIG_UNBLOCK，SIG_SETMASK
 	if ((err = pthread_sigmask(SIG_BLOCK, &mask, NULL)) != 0)
 		err_exit(err, "SIG_BLOCK error");
 
